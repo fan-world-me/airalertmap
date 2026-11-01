@@ -3,6 +3,30 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val releaseSigningValues = listOf(
+    providers.gradleProperty("AIRALERT_KEYSTORE_PATH")
+        .orElse(providers.environmentVariable("AIRALERT_KEYSTORE_PATH"))
+        .orNull,
+    providers.gradleProperty("AIRALERT_KEYSTORE_PASSWORD")
+        .orElse(providers.environmentVariable("AIRALERT_KEYSTORE_PASSWORD"))
+        .orNull,
+    providers.gradleProperty("AIRALERT_KEY_ALIAS")
+        .orElse(providers.environmentVariable("AIRALERT_KEY_ALIAS"))
+        .orNull,
+    providers.gradleProperty("AIRALERT_KEY_PASSWORD")
+        .orElse(providers.environmentVariable("AIRALERT_KEY_PASSWORD"))
+        .orNull
+)
+val hasReleaseSigning = releaseSigningValues.all { !it.isNullOrBlank() }
+val hasPartialReleaseSigning = releaseSigningValues.any { !it.isNullOrBlank() } && !hasReleaseSigning
+
+if (hasPartialReleaseSigning) {
+    throw GradleException(
+        "Release signing requires AIRALERT_KEYSTORE_PATH, AIRALERT_KEYSTORE_PASSWORD, " +
+            "AIRALERT_KEY_ALIAS, and AIRALERT_KEY_PASSWORD."
+    )
+}
+
 android {
     namespace = "com.airalertmap"
     compileSdk = 34
@@ -11,8 +35,8 @@ android {
         applicationId = "com.airalertmap"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toIntOrNull() ?: 2
+        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "1.0.0"
     }
 
     buildFeatures { compose = true }
@@ -29,19 +53,23 @@ android {
 
     kotlinOptions { jvmTarget = "17" }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("${rootDir}/fan_world_me.jks")
-            storePassword = "fan_world_me"
-            keyAlias = "fan_world_me"
-            keyPassword = "fan_world_me"
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseSigningValues[0]!!)
+                storePassword = releaseSigningValues[1]
+                keyAlias = releaseSigningValues[2]
+                keyPassword = releaseSigningValues[3]
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

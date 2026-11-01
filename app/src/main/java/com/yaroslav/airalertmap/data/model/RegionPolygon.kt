@@ -2,8 +2,8 @@ package com.airalertmap.data.model
 
 /**
  * Один регион (область) как набор колец в lat/lon, как они лежат в
- * oblasts.geojson (см. neptun.in.ua/developers). `key` совпадает с
- * AlertArea.key из /api/v1/alerts — по нему матчится подсветка тревоги.
+ * oblasts.geojson (см. neptun.in.ua/developers). Статусы тревог связываются
+ * с полигонами по нормализованному названию территории.
  */
 data class RegionPolygon(
     val key: String,

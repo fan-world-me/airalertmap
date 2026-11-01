@@ -15,12 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,24 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.airalertmap.data.model.AlertArea
 import com.airalertmap.data.model.RegionPolygon
-import com.airalertmap.data.model.Threat
-import com.airalertmap.data.model.ThreatType
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.asin
-import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
-import java.time.Instant
 
 private const val LAT_MIN = 43.9
 private const val LAT_MAX = 52.7
@@ -76,32 +62,41 @@ private val MAJOR_CITIES = listOf(
 
 private data class MapPalette(
     val background: Color,
+    val areaFill: Color,
     val border: Color,
     val raionBorder: Color,
     val oblastAlertFill: Color,
     val raionAlertFill: Color,
+    val oblastWarningFill: Color,
+    val raionWarningFill: Color,
     val labelColor: Int,
     val cityDot: Int
 )
 
 private val DARK_PALETTE = MapPalette(
-    background = Color(0xFF12161D),
-    border = Color(0xFF3A4353),
-    raionBorder = Color(0xFF232A35),
-    oblastAlertFill = Color(0xFFB0392E),
-    raionAlertFill = Color(0xFFE0745F),
-    labelColor = 0xFFB8C1CC.toInt(),
-    cityDot = 0xFFEFEFEF.toInt()
+    background = Color(0xFF10151A),
+    areaFill = Color(0xFF1B242A),
+    border = Color(0xFF52616A),
+    raionBorder = Color(0xFF323E45),
+    oblastAlertFill = Color(0xFFBA1A1A),
+    raionAlertFill = Color(0xFFEF5350),
+    oblastWarningFill = Color(0xFF815000),
+    raionWarningFill = Color(0xFFC78300),
+    labelColor = 0xFFE1E7EA.toInt(),
+    cityDot = 0xFFF3F5F6.toInt()
 )
 
 private val LIGHT_PALETTE = MapPalette(
-    background = Color(0xFFF3F4F6),
-    border = Color(0xFFC7CCD4),
-    raionBorder = Color(0xFFD6DAE0),
-    oblastAlertFill = Color(0xFFE0574A),
-    raionAlertFill = Color(0xFFF0958A),
-    labelColor = 0xFF5B6470.toInt(),
-    cityDot = 0xFF2A2F36.toInt()
+    background = Color(0xFFE8ECEC),
+    areaFill = Color(0xFFF1F4F3),
+    border = Color(0xFF859394),
+    raionBorder = Color(0xFFBCC7C5),
+    oblastAlertFill = Color(0xFFBA1A1A),
+    raionAlertFill = Color(0xFFE35D56),
+    oblastWarningFill = Color(0xFF825500),
+    raionWarningFill = Color(0xFFD18C00),
+    labelColor = 0xFF253239.toInt(),
+    cityDot = 0xFF18252B.toInt()
 )
 
 private data class MapFrame(
@@ -134,60 +129,6 @@ private fun project(
     return Offset(px.toFloat(), py.toFloat()) * scale + offset
 }
 
-private fun colorFor(type: ThreatType): Color = when (type) {
-    ThreatType.UAV -> Color(0xFFFFA726)
-    ThreatType.FPV -> Color(0xFFFF7043)
-    ThreatType.RECON -> Color(0xFFFFD54F)
-    ThreatType.MISSILE -> Color(0xFFFF5252)
-    ThreatType.BALLISTIC -> Color(0xFFE53935)
-    ThreatType.KAB -> Color(0xFFE040FB)
-    ThreatType.MIG31K -> Color(0xFF9575CD)
-    ThreatType.UNKNOWN -> Color(0xFFB0BEC5)
-}
-
-private fun markerBaseRadius(type: ThreatType, selected: Boolean): Float = when (type) {
-    ThreatType.UAV -> if (selected) 16f else 13f
-    ThreatType.FPV -> if (selected) 13f else 10f
-    ThreatType.MISSILE, ThreatType.BALLISTIC, ThreatType.KAB -> if (selected) 14f else 11f
-    ThreatType.RECON, ThreatType.MIG31K -> if (selected) 11f else 9f
-    ThreatType.UNKNOWN -> if (selected) 9f else 7f
-}
-
-private fun markerHitRadius(type: ThreatType, selected: Boolean): Float =
-    markerBaseRadius(type, selected) * when (type) {
-        ThreatType.RECON, ThreatType.MIG31K, ThreatType.UNKNOWN -> 1.8f
-        else -> 2.0f
-    }
-
-private fun destination(lat: Double, lon: Double, bearingDeg: Double, distanceKm: Double): Pair<Double, Double> {
-    val radiusKm = 6371.0088
-    val angular = distanceKm / radiusKm
-    val lat1 = Math.toRadians(lat)
-    val lon1 = Math.toRadians(lon)
-    val bearing = Math.toRadians(bearingDeg)
-
-    val lat2 = asin(sin(lat1) * cos(angular) + cos(lat1) * sin(angular) * cos(bearing))
-    val lon2 = lon1 + atan2(
-        sin(bearing) * sin(angular) * cos(lat1),
-        cos(angular) - sin(lat1) * sin(lat2)
-    )
-    return Math.toDegrees(lat2) to Math.toDegrees(lon2)
-}
-
-private fun predictedLatLon(threat: Threat, nowMs: Long): Pair<Double, Double> {
-    val speed = threat.velocity?.speedKmh ?: return threat.lat to threat.lon
-    val bearing = threat.velocity.bearingDeg ?: threat.heading ?: return threat.lat to threat.lon
-    if (speed <= 0.0) return threat.lat to threat.lon
-
-    val anchor = try {
-        Instant.parse(threat.confirmedAt ?: threat.updatedAt).toEpochMilli()
-    } catch (_: Exception) {
-        nowMs
-    }
-    val elapsedHours = max(0.0, (nowMs - anchor).toDouble() / 3_600_000.0)
-    return destination(threat.lat, threat.lon, bearing, speed * elapsedHours)
-}
-
 private fun regionCentroid(rings: List<List<Pair<Double, Double>>>): Pair<Double, Double>? {
     val outer = rings.maxByOrNull { it.size } ?: return null
     if (outer.isEmpty()) return null
@@ -200,102 +141,34 @@ private fun regionCentroid(rings: List<List<Pair<Double, Double>>>): Pair<Double
     return (sumLat / outer.size) to (sumLon / outer.size)
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawThreatMarker(
-    center: Offset,
-    type: ThreatType,
-    headingDeg: Float,
-    advisory: Boolean,
-    selected: Boolean
-) {
-    val color = colorFor(type)
-    val alpha = if (advisory) 0.55f else 1f
-    val radius = markerBaseRadius(type, selected)
-
-    rotate(degrees = headingDeg, pivot = center) {
-        when (type) {
-            ThreatType.UAV, ThreatType.FPV -> {
-                val path = Path().apply {
-                    moveTo(center.x, center.y - radius)
-                    lineTo(center.x + radius * 0.75f, center.y + radius * 0.7f)
-                    lineTo(center.x, center.y + radius * 0.3f)
-                    lineTo(center.x - radius * 0.75f, center.y + radius * 0.7f)
-                    close()
-                }
-                drawPath(path, color = color.copy(alpha = alpha))
-            }
-            ThreatType.MISSILE, ThreatType.BALLISTIC, ThreatType.KAB -> {
-                val path = Path().apply {
-                    moveTo(center.x, center.y - radius)
-                    lineTo(center.x + radius, center.y)
-                    lineTo(center.x, center.y + radius)
-                    lineTo(center.x - radius, center.y)
-                    close()
-                }
-                drawPath(path, color = color.copy(alpha = alpha))
-            }
-            ThreatType.RECON, ThreatType.MIG31K -> {
-                drawCircle(
-                    color = color.copy(alpha = alpha),
-                    radius = radius,
-                    center = center,
-                    style = Stroke(width = if (selected) 3.5f else 2.8f)
-                )
-            }
-            ThreatType.UNKNOWN -> {
-                drawCircle(
-                    color = color.copy(alpha = alpha),
-                    radius = radius,
-                    center = center
-                )
-            }
-        }
-    }
-
-    if (type != ThreatType.RECON && type != ThreatType.MIG31K) {
-        drawCircle(
-            color = Color.White.copy(alpha = 0.35f * alpha),
-            radius = 1.5f,
-            center = center
-        )
-    }
-}
-
 @Composable
-fun ThreatMap(
-    threats: List<Threat>,
+fun AlertMap(
     oblastPolygons: List<RegionPolygon> = emptyList(),
     raionPolygons: List<RegionPolygon> = emptyList(),
     alertOblasts: List<AlertArea> = emptyList(),
     alertRaions: List<AlertArea> = emptyList(),
     isDarkMap: Boolean = true,
-    selectedThreatId: String? = null,
-    onThreatClick: (Threat?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scaleAnim = remember { Animatable(1f) }
     val offsetAnim = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
-    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val coroutineScope = rememberCoroutineScope()
 
     val palette = if (isDarkMap) DARK_PALETTE else LIGHT_PALETTE
-    val activeOblastKeys = remember(alertOblasts) { alertOblasts.map { it.key }.toSet() }
-    val activeRaionKeys = remember(alertRaions) { alertRaions.map { it.key }.toSet() }
-
     val oblastLabelPaint = remember(isDarkMap) {
         Paint().asFrameworkPaint().apply {
             isAntiAlias = true
             color = palette.labelColor
-            textSize = 26f
+            textSize = 30f
             textAlign = android.graphics.Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
-            alpha = 150
         }
     }
     val cityLabelPaint = remember(isDarkMap) {
         Paint().asFrameworkPaint().apply {
             isAntiAlias = true
             color = palette.labelColor
-            textSize = 30f
+            textSize = 32f
             textAlign = android.graphics.Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
@@ -308,13 +181,6 @@ fun ThreatMap(
             x = offset.x.coerceIn(-maxOffsetX, 0f),
             y = offset.y.coerceIn(-maxOffsetY, 0f)
         )
-    }
-
-    LaunchedEffect(threats) {
-        while (true) {
-            nowMs = System.currentTimeMillis()
-            delay(250L)
-        }
     }
 
     Box(modifier = modifier) {
@@ -330,20 +196,8 @@ fun ThreatMap(
                         coroutineScope.launch { offsetAnim.snapTo(clamped) }
                     }
                 }
-                .pointerInput(threats, selectedThreatId) {
+                .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = { tapPoint ->
-                            val frame = buildFrame(size.width.toFloat(), size.height.toFloat())
-                            val scale = scaleAnim.value
-                            val offset = offsetAnim.value
-                            val hit = threats.asReversed().firstOrNull { threat ->
-                                val (lat, lon) = predictedLatLon(threat, System.currentTimeMillis())
-                                val center = project(lat, lon, frame, scale, offset)
-                                val selected = threat.id == selectedThreatId
-                                hypot(center.x - tapPoint.x, center.y - tapPoint.y) <= markerHitRadius(threat.type, selected)
-                            }
-                            onThreatClick(hit)
-                        },
                         onDoubleTap = { tapPoint ->
                             val w = size.width.toFloat()
                             val h = size.height.toFloat()
@@ -369,8 +223,8 @@ fun ThreatMap(
 
             drawRect(color = palette.background)
 
-            for (region in raionPolygons) {
-                val isAlert = region.key in activeRaionKeys
+            for (region in oblastPolygons) {
+                val alert = alertForRegion(alertOblasts, region)
                 for (ring in region.rings) {
                     if (ring.size < 3) continue
                     val path = Path().apply {
@@ -382,13 +236,37 @@ fun ThreatMap(
                         }
                         close()
                     }
-                    if (isAlert) drawPath(path, color = palette.raionAlertFill)
-                    drawPath(path, color = palette.raionBorder, style = Stroke(width = 0.8f))
+                    drawPath(
+                        path,
+                        color = if (alert == null) palette.areaFill else alertFillColor(alert, palette, oblast = true)
+                    )
+                }
+            }
+
+            for (region in raionPolygons) {
+                val alert = alertForRegion(alertRaions, region)
+                for (ring in region.rings) {
+                    if (ring.size < 3) continue
+                    val path = Path().apply {
+                        val first = project(ring[0].first, ring[0].second, frame, scale, offset)
+                        moveTo(first.x, first.y)
+                        for (i in 1 until ring.size) {
+                            val p = project(ring[i].first, ring[i].second, frame, scale, offset)
+                            lineTo(p.x, p.y)
+                        }
+                        close()
+                    }
+                    if (alert != null) drawPath(path, color = alertFillColor(alert, palette, oblast = false))
+                    drawPath(
+                        path,
+                        color = palette.raionBorder,
+                        style = Stroke(width = if (alert != null) 1.7f else 0.8f)
+                    )
                 }
             }
 
             for (region in oblastPolygons) {
-                val isAlert = region.key in activeOblastKeys
+                val alert = alertForRegion(alertOblasts, region)
                 for (ring in region.rings) {
                     if (ring.size < 3) continue
                     val path = Path().apply {
@@ -400,11 +278,10 @@ fun ThreatMap(
                         }
                         close()
                     }
-                    if (isAlert) drawPath(path, color = palette.oblastAlertFill)
                     drawPath(
                         path,
                         color = palette.border,
-                        style = Stroke(width = if (isAlert) 2.2f else 1.3f)
+                        style = Stroke(width = if (alert != null) 2.5f else 1.3f)
                     )
                 }
             }
@@ -432,21 +309,6 @@ fun ThreatMap(
                 drawContext.canvas.nativeCanvas.drawText(city.name, p.x, p.y - 12f, cityLabelPaint)
             }
 
-            for (threat in threats) {
-                val (lat, lon) = predictedLatLon(threat, nowMs)
-                val center = project(lat, lon, frame, scale, offset)
-                val heading = (threat.velocity?.bearingDeg ?: threat.heading ?: 0.0).toFloat()
-                val selected = threat.id == selectedThreatId
-                drawThreatMarker(center, threat.type, heading, threat.advisory == true, selected)
-                if (selected) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.22f),
-                        radius = markerBaseRadius(threat.type, true) + 10f,
-                        center = center,
-                        style = Stroke(width = 2f)
-                    )
-                }
-            }
         }
 
         Box(
@@ -464,5 +326,31 @@ fun ThreatMap(
         ) {
             Text("↺", color = Color.White, style = MaterialTheme.typography.titleMedium)
         }
+    }
+
+}
+
+private fun normalizedRegionName(value: String): String =
+    value.lowercase()
+        .replace(Regex("(область|області|район|райони|района)$"), "")
+        .filter(Char::isLetterOrDigit)
+
+private fun alertForRegion(alerts: List<AlertArea>, region: RegionPolygon): AlertArea? {
+    val regionNames = setOf(normalizedRegionName(region.key), normalizedRegionName(region.name))
+    return alerts.firstOrNull { alert ->
+        normalizedRegionName(alert.key) in regionNames ||
+            normalizedRegionName(alert.name) in regionNames
+    }
+}
+
+private fun alertFillColor(alert: AlertArea?, palette: MapPalette, oblast: Boolean): Color {
+    if (alert == null) return palette.areaFill
+    val isWarning = alert.color.equals("yellow", ignoreCase = true) ||
+        alert.color.equals("warning", ignoreCase = true)
+    return when {
+        oblast && isWarning -> palette.oblastWarningFill
+        isWarning -> palette.raionWarningFill
+        oblast -> palette.oblastAlertFill
+        else -> palette.raionAlertFill
     }
 }

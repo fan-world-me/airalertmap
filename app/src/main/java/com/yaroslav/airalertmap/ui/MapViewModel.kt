@@ -2,24 +2,19 @@ package com.airalertmap.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.airalertmap.data.AlertsRepository
 import com.airalertmap.data.GeoJsonLoader
-import com.airalertmap.data.ThreatsRepository
 import com.airalertmap.data.model.AlertArea
 import com.airalertmap.data.model.RegionPolygon
-import com.airalertmap.data.model.Threat
-import com.airalertmap.data.model.ThreatStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class MapViewModel(
-    private val repository: ThreatsRepository = ThreatsRepository(),
+    private val repository: AlertsRepository = AlertsRepository(),
     private val geoJsonLoader: GeoJsonLoader = GeoJsonLoader()
 ) : ViewModel() {
-
-    private val _threats = MutableStateFlow<List<Threat>>(emptyList())
-    val threats: StateFlow<List<Threat>> = _threats.asStateFlow()
 
     private val _alertOblasts = MutableStateFlow<List<AlertArea>>(emptyList())
     val alertOblasts: StateFlow<List<AlertArea>> = _alertOblasts.asStateFlow()
@@ -54,8 +49,8 @@ class MapViewModel(
 
     init {
         viewModelScope.launch {
-            // Границы не меняются во время сессии — грузим один раз отдельно
-            // от поллинга целей/тревог, чтобы сбой геометрии не блокировал карту
+            // Границы не меняются во время сессии — загружаем их отдельно
+            // от опроса тревог.
             _oblastPolygons.value = geoJsonLoader.loadOblasts()
         }
         viewModelScope.launch {
@@ -64,7 +59,6 @@ class MapViewModel(
         viewModelScope.launch {
             repository.observeSnapshot().collect { result ->
                 result.onSuccess { snapshot ->
-                    _threats.value = snapshot.threats.filter { it.status == ThreatStatus.ACTIVE }
                     _alertOblasts.value = snapshot.alertOblasts
                     _alertRaions.value = snapshot.alertRaions
                     _serverTime.value = snapshot.serverTime

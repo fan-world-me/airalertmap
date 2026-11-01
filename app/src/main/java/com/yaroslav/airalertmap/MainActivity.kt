@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,24 +19,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,10 +47,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.airalertmap.data.model.AlertArea
-import com.airalertmap.data.model.Threat
-import com.airalertmap.data.model.ThreatType
+import com.airalertmap.ui.AlertMap
 import com.airalertmap.ui.MapViewModel
-import com.airalertmap.ui.ThreatMap
 import com.airalertmap.ui.theme.AirAlertTheme
 
 class MainActivity : ComponentActivity() {
@@ -73,7 +71,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AirAlertApp(viewModel: MapViewModel) {
-    val allThreats by viewModel.threats.collectAsState()
     val alertOblasts by viewModel.alertOblasts.collectAsState()
     val alertRaions by viewModel.alertRaions.collectAsState()
     val oblastPolygons by viewModel.oblastPolygons.collectAsState()
@@ -81,28 +78,16 @@ private fun AirAlertApp(viewModel: MapViewModel) {
     val isDarkMap by viewModel.isDarkMap.collectAsState()
     val loading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-
-    var selectedType by remember { mutableStateOf<ThreatType?>(null) }
-    var selectedThreat by remember { mutableStateOf<Threat?>(null) }
     var showAlerts by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }
 
-    val threats = if (selectedType == null) {
-        allThreats
-    } else {
-        allThreats.filter { it.type == selectedType }
-    }
-
     Box(Modifier.fillMaxSize()) {
-        ThreatMap(
-            threats = threats,
+        AlertMap(
             oblastPolygons = oblastPolygons,
             raionPolygons = raionPolygons,
             alertOblasts = alertOblasts,
             alertRaions = alertRaions,
             isDarkMap = isDarkMap,
-            selectedThreatId = selectedThreat?.id,
-            onThreatClick = { selectedThreat = it },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -111,69 +96,77 @@ private fun AirAlertApp(viewModel: MapViewModel) {
                 .align(Alignment.TopCenter)
                 .padding(start = 12.dp, end = 12.dp, top = 12.dp)
                 .fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xE8171D24))
+            shape = RoundedCornerShape(
+                topStart = 32.dp,
+                topEnd = 32.dp,
+                bottomStart = 20.dp,
+                bottomEnd = 20.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
-            Column(Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "AIR ALERT MAP",
-                            color = Color.White,
+                            stringResource(R.string.app_name),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.headlineSmall
                         )
-                        Text(
-                            if (error == null) stringResource(R.string.status_updating) else stringResource(R.string.status_offline),
-                            color = if (error == null) Color(0xFF81C784) else Color(0xFFFFB74D),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (error == null) MaterialTheme.colorScheme.tertiary
+                                        else MaterialTheme.colorScheme.error
+                                    )
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                if (error == null) stringResource(R.string.status_updating)
+                                else stringResource(R.string.status_offline),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
                     }
 
-                    IconAction(if (isDarkMap) "☀" else "☾") { viewModel.toggleMapTheme() }
+                    FilledTonalButton(
+                        onClick = { viewModel.toggleMapTheme() },
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text(if (isDarkMap) "☼" else "☾", style = MaterialTheme.typography.titleLarge)
+                    }
                     Spacer(Modifier.width(6.dp))
-                    IconAction("⚙") { showSettings = true }
+                    FilledTonalButton(
+                        onClick = { showSettings = true },
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text("⋯", style = MaterialTheme.typography.titleLarge)
+                    }
                 }
 
-                Spacer(Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    StatBadge(
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SummaryCard(
                         modifier = Modifier.weight(1f),
-                        value = allThreats.size.toString(),
-                        label = stringResource(R.string.targets),
-                        color = Color(0xFFFFB74D)
+                        value = alertOblasts.size.toString(),
+                        label = stringResource(R.string.oblasts),
+                        tint = MaterialTheme.colorScheme.error
                     )
-                    StatBadge(
+                    SummaryCard(
                         modifier = Modifier.weight(1f),
-                        value = (alertOblasts.size + alertRaions.size).toString(),
-                        label = stringResource(R.string.alerts),
-                        color = if (alertOblasts.isNotEmpty() || alertRaions.isNotEmpty()) Color(0xFFE0574A) else Color(0xFF81C784)
+                        value = alertRaions.size.toString(),
+                        label = stringResource(R.string.raions),
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
-                }
-
-                Spacer(Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(stringResource(R.string.all), selectedType == null) { selectedType = null }
-                    FilterChip(stringResource(R.string.uav), selectedType == ThreatType.UAV) { selectedType = ThreatType.UAV }
-                    FilterChip(stringResource(R.string.fpv), selectedType == ThreatType.FPV) { selectedType = ThreatType.FPV }
-                    FilterChip(stringResource(R.string.missile), selectedType == ThreatType.MISSILE) { selectedType = ThreatType.MISSILE }
-                    FilterChip(stringResource(R.string.ballistic), selectedType == ThreatType.BALLISTIC) { selectedType = ThreatType.BALLISTIC }
-                    FilterChip(stringResource(R.string.kab), selectedType == ThreatType.KAB) { selectedType = ThreatType.KAB }
-                    FilterChip(stringResource(R.string.mig31k), selectedType == ThreatType.MIG31K) { selectedType = ThreatType.MIG31K }
-                    FilterChip(stringResource(R.string.recon), selectedType == ThreatType.RECON) { selectedType = ThreatType.RECON }
                 }
             }
         }
@@ -183,10 +176,21 @@ private fun AirAlertApp(viewModel: MapViewModel) {
                 .align(Alignment.BottomCenter)
                 .padding(12.dp)
                 .fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xEC11161D))
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = 18.dp,
+                bottomEnd = 18.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            Column(Modifier.padding(14.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Row(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -194,12 +198,13 @@ private fun AirAlertApp(viewModel: MapViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             stringResource(R.string.official_alerts),
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             stringResource(R.string.regions_count, alertOblasts.size, alertRaions.size),
-                            color = Color(0xFFB0BEC5),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -208,47 +213,43 @@ private fun AirAlertApp(viewModel: MapViewModel) {
                     }
                 }
 
-                if (showAlerts && (alertOblasts.isNotEmpty() || alertRaions.isNotEmpty())) {
-                    HorizontalDivider(color = Color(0xFF29313A), modifier = Modifier.padding(vertical = 8.dp))
-
-                    alertOblasts.take(6).forEach { AlertRow(it, true) }
-                    alertRaions.take(6).forEach { AlertRow(it, false) }
-
-                    val remaining =
-                        (alertOblasts.size - 6).coerceAtLeast(0) +
-                            (alertRaions.size - 6).coerceAtLeast(0)
-
-                    if (remaining > 0) {
+                if (showAlerts) {
+                    val alerts = alertOblasts + alertRaions
+                    if (alerts.isEmpty()) {
                         Text(
-                            stringResource(R.string.more, remaining),
-                            color = Color(0xFF90CAF9),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp)
+                            stringResource(R.string.no_alerts),
+                            color = MaterialTheme.colorScheme.tertiary,
+                            style = MaterialTheme.typography.bodyMedium
                         )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.height((minOf(alerts.size, 4) * 42).dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(alerts.take(12), key = { it.key }) { alert ->
+                                AlertRow(alert)
+                            }
+                        }
+                        if (alerts.size > 12) {
+                            Text(
+                                stringResource(R.string.more, alerts.size - 12),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
                     }
-                } else if (showAlerts) {
-                    Text(
-                        stringResource(R.string.no_alerts),
-                        color = Color(0xFF81C784),
-                        style = MaterialTheme.typography.bodySmall
-                    )
                 }
-
-                Spacer(Modifier.height(4.dp))
 
                 val context = LocalContext.current
                 TextButton(
                     onClick = {
                         context.startActivity(
-                            Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://neptun.in.ua/")
-                            )
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://api.dimap.live/"))
                         )
                     },
                     modifier = Modifier.align(Alignment.End)
                 ) {
-                    Text(stringResource(R.string.neptun_data))
+                    Text(stringResource(R.string.provider_data))
                 }
             }
         }
@@ -257,71 +258,61 @@ private fun AirAlertApp(viewModel: MapViewModel) {
             SettingsDialog(onDismiss = { showSettings = false })
         }
 
-        selectedThreat?.let { threat ->
-            ThreatDetailsDialog(
-                threat = threat,
-                onDismiss = { selectedThreat = null }
-            )
-        }
-
         if (loading) {
             CircularProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(42.dp),
-                color = Color.White
+                modifier = Modifier.align(Alignment.Center).size(42.dp),
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
 @Composable
-private fun ThreatDetailsDialog(
-    threat: Threat,
-    onDismiss: () -> Unit
+private fun SummaryCard(
+    value: String,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier
 ) {
-    val typeLabel = when (threat.type) {
-        ThreatType.UAV -> stringResource(R.string.uav)
-        ThreatType.FPV -> stringResource(R.string.fpv)
-        ThreatType.RECON -> stringResource(R.string.recon)
-        ThreatType.MISSILE -> stringResource(R.string.missile)
-        ThreatType.BALLISTIC -> stringResource(R.string.ballistic)
-        ThreatType.KAB -> stringResource(R.string.kab)
-        ThreatType.MIG31K -> stringResource(R.string.mig31k)
-        ThreatType.UNKNOWN -> stringResource(R.string.unknown_type)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(value, color = tint, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
     }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(threat.title.ifBlank { stringResource(R.string.target_details) }) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                DetailLine(stringResource(R.string.target_type), typeLabel)
-                DetailLine(stringResource(R.string.target_region), threat.region ?: "—")
-                DetailLine(stringResource(R.string.target_district), threat.district ?: "—")
-                DetailLine(stringResource(R.string.target_locality), threat.locality ?: "—")
-                DetailLine(stringResource(R.string.target_status), threat.status.apiValue)
-                DetailLine(stringResource(R.string.target_coordinates), "%.4f, %.4f".format(threat.lat, threat.lon))
-                threat.heading?.let { DetailLine(stringResource(R.string.target_heading), "%.0f°".format(it)) }
-                threat.velocity?.speedKmh?.let { DetailLine(stringResource(R.string.target_speed), "%.0f km/h".format(it)) }
-                threat.uncertaintyKm?.let { DetailLine(stringResource(R.string.target_uncertainty), "%.1f km".format(it)) }
-                threat.updatedAt.takeIf { it.isNotBlank() }?.let { DetailLine(stringResource(R.string.target_updated), it) }
-                threat.explanationShort?.takeIf { it.isNotBlank() }?.let { DetailLine(stringResource(R.string.target_note), it) }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.close))
-            }
-        }
-    )
 }
 
 @Composable
-private fun DetailLine(label: String, value: String) {
-    Column {
-        Text(label, color = Color(0xFF90A4AE), style = MaterialTheme.typography.labelSmall)
-        Text(value, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+private fun AlertRow(alert: AlertArea) {
+    val tint = when (alert.color?.lowercase()) {
+        "yellow", "warning" -> Color(0xFFFFC047)
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(tint)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = alert.name,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
@@ -338,10 +329,7 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.settings_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    stringResource(R.string.project_section),
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(stringResource(R.string.project_section), fontWeight = FontWeight.SemiBold)
                 TextButton(onClick = { openUrl("https://fan-world-me.github.io/airalertmap/") }) {
                     Text(stringResource(R.string.project_website))
                 }
@@ -351,26 +339,14 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
                 TextButton(onClick = { openUrl("https://github.com/fan-world-me/airalertmap/releases/latest") }) {
                     Text(stringResource(R.string.latest_release))
                 }
-
                 Spacer(Modifier.height(6.dp))
-
-                Text(
-                    stringResource(R.string.support_section),
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    stringResource(R.string.support_description),
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(stringResource(R.string.support_section), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.support_description), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { openUrl("https://github.com/sponsors/fan-world-me") }) {
                     Text(stringResource(R.string.github_sponsors))
                 }
-
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    stringResource(R.string.version_info),
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(stringResource(R.string.version_info), style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
@@ -379,72 +355,4 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
             }
         }
     )
-}
-
-@Composable
-private fun IconAction(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF222A33))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, color = Color.White, style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-@Composable
-private fun StatBadge(value: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF222A33))
-            .padding(vertical = 8.dp)
-    ) {
-        Text(value, color = color, fontWeight = FontWeight.Bold)
-        Text(label, color = Color(0xFFB0BEC5), style = MaterialTheme.typography.labelSmall)
-    }
-}
-
-@Composable
-private fun FilterChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    AssistChip(
-        onClick = onClick,
-        label = { Text(text) },
-        colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) Color(0xFF263238) else Color(0xFF171D24),
-            labelColor = if (selected) Color.White else Color(0xFFB0BEC5)
-        )
-    )
-}
-
-@Composable
-private fun AlertRow(area: AlertArea, oblast: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color(0xFFFF5252))
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = area.name,
-            color = Color.White,
-            fontWeight = if (oblast) FontWeight.SemiBold else FontWeight.Normal,
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
 }
