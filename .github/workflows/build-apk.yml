@@ -13,14 +13,14 @@ on:
       - "settings.gradle.kts"
 
 permissions:
-  contents: read
+  contents: write   # needed to create releases and upload assets
 
 concurrency:
   group: build-apk-main
   cancel-in-progress: false
 
 jobs:
-  build-and-upload:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -70,6 +70,7 @@ jobs:
             -PreleaseVersionCode="$VERSION_CODE" \
             -PreleaseVersionName="$VERSION_NAME"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK signature
         run: |
@@ -82,10 +83,19 @@ jobs:
           APKSIGNER="${ANDROID_HOME}/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner"
           "$APKSIGNER" verify --verbose "$APK"
 
-      - name: Upload signed APK
-        uses: actions/upload-artifact@v4
+      - name: Rename APK with version
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/AirAlertMap-v${{ steps.build.outputs.version_name }}.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: airalertmap-${{ steps.build.outputs.version_name }}
-          path: app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
-          retention-days: 30
+          tag_name: v${{ steps.build.outputs.version_name }}
+          name: "v${{ steps.build.outputs.version_name }}"
+          body: |
+            Автоматичний реліз з коміту ${{ github.sha }}
+
+            **Коміт:** ${{ github.event.head_commit.message }}
+          files: app/build/outputs/apk/release/AirAlertMap-v${{ steps.build.outputs.version_name }}.apk
+          make_latest: true
