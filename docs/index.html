@@ -1,74 +1,109 @@
 <!doctype html>
 <html lang="uk">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Air Alert Map — карта офіційних повітряних тривог по областях і районах.">
-<meta name="theme-color" content="#0b0f14">
-<link rel="stylesheet" href="style.css">
-<title>Air Alert Map</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Air Alert Map — зручна карта офіційних повітряних тривог по областях і районах України.">
+  <meta name="theme-color" content="#10151a">
+  <link rel="stylesheet" href="style.css">
+  <title>Air Alert Map — карта тривог</title>
 </head>
 <body>
-<main class="shell">
-  <header class="hero">
-    <div class="badge">OPEN SOURCE • ANDROID</div>
-    <h1>Air Alert <span>Map</span></h1>
-    <p class="lead">Зручна карта офіційних повітряних тривог по областях і районах.</p>
-    <div class="actions">
-      <a class="button primary" href="https://github.com/fan-world-me/airalertmap/releases/latest">Завантажити актуальну версію</a>
-      <a class="button" href="https://github.com/fan-world-me/airalertmap/releases">Усі релізи</a>
-    </div>
-    <p class="hint">Кнопка вище завжди відкриває останній опублікований реліз на GitHub.</p>
-  </header>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Air Alert Map — головна">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2V6Z" />
+            <path d="M9 4v14m6-12v14" />
+            <path d="m12 8 .8 1.8 2 .2-1.5 1.3.4 2-1.7-1-1.7 1 .4-2-1.5-1.3 2-.2L12 8Z" />
+          </svg>
+        </span>
+        <span>Air Alert <strong>Map</strong></span>
+      </a>
+      <a class="top-link" href="https://github.com/fan-world-me/airalertmap">GitHub <span aria-hidden="true">↗</span></a>
+    </header>
 
-  <section class="grid">
-    <article class="card">
-      <div class="icon">🗺️</div>
-      <h2>Інтерактивна карта</h2>
-      <p>Області та райони з активною тривогою виділяються на інтерактивній карті.</p>
-    </article>
-    <article class="card">
-      <div class="icon">🔴</div>
-      <h2>Офіційні тривоги</h2>
-      <p>Статуси тривог по областях і районах показуються окремо та оновлюються з провайдера.</p>
-    </article>
-    <article class="card">
-      <div class="icon">⚡</div>
-      <h2>Оновлення</h2>
-      <p>Застосунок регулярно отримує актуальні дані та зберігає останній стан при втраті мережі.</p>
-    </article>
-  </section>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="live-dot"></span> КАРТА ТРИВОГ УКРАЇНИ</div>
+        <h1 id="hero-title">Важливе —<br><span>на одній карті.</span></h1>
+        <p class="lead">Статуси повітряних тривог по областях і районах у зрозумілому, спокійному інтерфейсі.</p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/fan-world-me/airalertmap/actions/workflows/build-apk.yml">
+            Завантажити APK <span aria-hidden="true">↓</span>
+          </a>
+          <a class="button secondary" href="https://github.com/fan-world-me/airalertmap">Проєкт на GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="hint">APK доступний у завантаженнях останньої успішної збірки.</p>
+      </div>
 
-  <section class="download card">
-    <div>
-      <div class="eyebrow">ПОТРІБЕН ЗАСТОСУНОК?</div>
-      <h2>Встанови останню версію</h2>
-      <p>Ми не зберігаємо APK на цьому сайті. Усі офіційні збірки публікуються в GitHub Releases.</p>
-    </div>
-    <a class="button primary" href="https://github.com/fan-world-me/airalertmap/releases/latest">Перейти до релізу →</a>
-  </section>
+      <div class="map-preview" aria-label="Ілюстрація карти з областями та статусами тривог" role="img">
+        <div class="map-topline">
+          <span class="map-label">СТАН ТРИВОГ</span>
+          <span class="live-status"><span class="live-dot"></span> ОНОВЛЮЄТЬСЯ</span>
+        </div>
+        <svg class="map-art" viewBox="0 0 440 390" fill="none" aria-hidden="true">
+          <path class="map-outline" d="m87 49 37 10 20-12 30 7 23-19 28 9 10 25 36 4 14 22 32-5 14 25 38 8-4 31 25 19-17 26 9 26-23 13-9 31-31 6-14 27-35-9-24 19-27-13-31 9-22-17-31 8-11-25-30-8-4-29-28-14 8-28-17-23 15-24-9-27 21-17-6-30Z" />
+          <path class="region region-alert" d="m235 107 34 4 12 23-9 24-30 4-18-17 11-16v-22Z" />
+          <path class="region region-warn" d="m281 160 38-5 18 18-7 28-29 10-23-18 3-33Z" />
+          <path class="region" d="m173 187 35-5 21 17-3 27-27 13-24-13-2-39Z" />
+          <path class="region region-alert" d="m222 222 29-8 22 18-5 28-28 12-22-18 4-32Z" />
+          <path class="region" d="m137 126 36-9 20 18-8 30-33 10-20-20 5-29Z" />
+          <path class="region region-warn" d="m300 91 30-1 16 19-6 28-26-2-14-18V91Z" />
+          <path class="route-line" d="m89 280 60-37 33 8 39-41 39-6 32-54 57-23" />
+          <circle class="map-point" cx="89" cy="280" r="5" />
+          <circle class="map-point" cx="351" cy="127" r="5" />
+          <circle class="city-point" cx="200" cy="157" r="4" />
+          <circle class="city-point" cx="258" cy="196" r="4" />
+          <circle class="city-point" cx="176" cy="236" r="4" />
+        </svg>
+        <div class="map-legend">
+          <span><i class="legend-dot alert"></i> Тривога</span>
+          <span><i class="legend-dot warning"></i> Увага</span>
+          <span><i class="legend-dot calm"></i> Спокійно</span>
+        </div>
+        <div class="map-caption"><span class="caption-icon">⌖</span> Області та райони України</div>
+      </div>
+    </section>
 
-  <section class="links">
-    <a href="https://github.com/fan-world-me/airalertmap">GitHub</a>
-    <a href="https://github.com/fan-world-me/airalertmap/releases">Релізи</a>
-    <a href="https://github.com/fan-world-me/airalertmap/issues">Повідомити про помилку</a>
-  </section>
+    <section class="features" aria-label="Можливості застосунку">
+      <article class="feature-card">
+        <span class="feature-icon map-icon" aria-hidden="true">⌖</span>
+        <h2>Карта регіонів</h2>
+        <p>Області й райони з тривогою помітно виділені на інтерактивній мапі.</p>
+      </article>
+      <article class="feature-card">
+        <span class="feature-icon alert-icon" aria-hidden="true">!</span>
+        <h2>Зрозумілі статуси</h2>
+        <p>Активні сповіщення та їхній рівень легко побачити з першого погляду.</p>
+      </article>
+      <article class="feature-card">
+        <span class="feature-icon update-icon" aria-hidden="true">↻</span>
+        <h2>Автооновлення</h2>
+        <p>Інформація оновлюється автоматично; інтерфейс показує стан з’єднання.</p>
+      </article>
+    </section>
 
-  <section class="support card">
-    <div class="icon">💙</div>
-    <div>
-      <div class="eyebrow">ПІДТРИМАТИ ПРОЄКТ</div>
-      <h2>Хочеш допомогти?</h2>
-      <p>Підтримка допомагає розвивати Air Alert Map, виправляти помилки та додавати нові можливості.</p>
-      <a class="text-link" href="https://github.com/sponsors/fan-world-me">GitHub Sponsors →</a>
-    </div>
-  </section>
+    <section class="download-card" aria-labelledby="download-title">
+      <div class="download-copy">
+        <div class="eyebrow">ЗАСТОСУНОК ДЛЯ ANDROID</div>
+        <h2 id="download-title">Air Alert Map — завжди під рукою.</h2>
+        <p>Завантаж APK з останньої успішної збірки GitHub Actions. Відкрий запуск workflow та вибери artifact.</p>
+      </div>
+      <a class="button primary" href="https://github.com/fan-world-me/airalertmap/actions/workflows/build-apk.yml">До збірок <span aria-hidden="true">↗</span></a>
+    </section>
 
-  <footer>
-    <p>Air Alert Map — open-source проєкт.</p>
-    <p>Дані тривог: <a href="https://api.dimap.live/">ДІМАП</a>. Межі областей і районів: NEPTUN GeoJSON.</p>
-    <p class="warning">Застосунок не є єдиним джерелом інформації про безпеку. Під час тривоги користуйтеся офіційними сповіщеннями та вказівками місцевої влади.</p>
-  </footer>
-</main>
+    <footer>
+      <div class="footer-links">
+        <a href="https://github.com/fan-world-me/airalertmap">GitHub</a>
+        <a href="https://github.com/fan-world-me/airalertmap/issues">Повідомити про помилку</a>
+        <a href="https://github.com/sponsors/fan-world-me">Підтримати проєкт</a>
+      </div>
+      <p>Дані тривог: <a href="https://api.dimap.live/">ДІМАП</a>. Межі областей і районів: NEPTUN GeoJSON.</p>
+      <p class="warning">Застосунок не є єдиним джерелом інформації про безпеку. Під час тривоги користуйтеся офіційними сповіщеннями та вказівками місцевої влади.</p>
+      <p class="copyright">Air Alert Map · open source</p>
+    </footer>
+  </main>
 </body>
 </html>
