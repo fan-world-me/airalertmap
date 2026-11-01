@@ -173,15 +173,6 @@ a:focus-visible { outline: 3px solid var(--secondary); outline-offset: 4px; }
 .download-card p { margin: 0; color: var(--text-dim); font-size: 13px; }
 .download-card .button { flex: 0 0 auto; }
 
-.support-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 22px; margin-top: 14px; padding: 25px 30px; border: 1px solid rgba(242, 198, 109, 0.22); border-radius: 25px 25px 25px 16px; background: linear-gradient(110deg, rgba(90, 70, 18, 0.26), rgba(34, 44, 50, 0.82) 48%, rgba(26, 34, 40, 0.92)); }
-.support-icon { display: grid; width: 58px; height: 58px; place-items: center; border: 1px solid rgba(242, 198, 109, 0.22); border-radius: 21px; background: rgba(242, 198, 109, 0.1); }
-.support-icon svg { width: 30px; stroke: var(--secondary); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
-.support-copy .eyebrow { color: var(--secondary); }
-.support-copy h2 { margin: 6px 0 4px; font-size: clamp(18px, 2.1vw, 22px); letter-spacing: -0.035em; }
-.support-copy p { max-width: 610px; margin: 0; color: var(--text-dim); font-size: 13px; }
-.support-button { min-height: 48px; background: var(--secondary); color: var(--secondary-ink); white-space: nowrap; }
-.support-button:hover { background: #ffdfa0; }
-
 footer { margin-top: 42px; padding: 24px 12px 8px; border-top: 1px solid rgba(191, 201, 205, 0.12); color: #98a7ac; text-align: center; font-size: 12px; }
 .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin-bottom: 17px; }
 footer a { color: var(--text-dim); text-decoration: none; }
@@ -214,10 +205,6 @@ footer .copyright { margin-top: 20px; color: #718087; font-size: 11px; }
   .feature-icon { margin-bottom: 12px; }
   .download-card { align-items: flex-start; flex-direction: column; margin-top: 28px; padding: 24px 22px; }
   .download-card .button { width: 100%; }
-  .support-card { grid-template-columns: auto minmax(0, 1fr); gap: 15px; padding: 21px; }
-  .support-icon { width: 48px; height: 48px; border-radius: 18px; }
-  .support-icon svg { width: 25px; }
-  .support-button { grid-column: 1 / -1; width: 100%; }
 }
 
 @media (max-width: 420px) {
