@@ -1,19 +1,18 @@
-name: Release APK
+name: Build signed APK
 
 on:
   push:
-    branches: ["**"]
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-apk-main
+  group: build-apk-main
   cancel-in-progress: false
 
 jobs:
-  build-and-release:
+  build-and-upload:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,6 +48,7 @@ jobs:
           fi
 
       - name: Build signed release APK
+        id: build
         env:
           AIRALERT_KEYSTORE_PATH: ${{ runner.temp }}/airalert-release.jks
           AIRALERT_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -58,11 +58,10 @@ jobs:
           set -euo pipefail
           VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
           VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
-          ./gradlew --no-daemon assembleRelease \
+          bash ./gradlew --no-daemon assembleRelease \
             -PreleaseVersionCode="$VERSION_CODE" \
             -PreleaseVersionName="$VERSION_NAME"
-          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK signature
         run: |
@@ -75,19 +74,10 @@ jobs:
           APKSIGNER="${ANDROID_HOME}/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner"
           "$APKSIGNER" verify --verbose "$APK"
 
-      - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="v${VERSION_NAME}"
-          APK="app/build/outputs/apk/release/app-release.apk"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK" --clobber
-          else
-            gh release create "$TAG" "$APK" \
-              --target "$GITHUB_SHA" \
-              --title "$TAG" \
-              --notes "Automated signed APK build for commit $GITHUB_SHA."
-          fi
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: airalertmap-${{ steps.build.outputs.version_name }}
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
