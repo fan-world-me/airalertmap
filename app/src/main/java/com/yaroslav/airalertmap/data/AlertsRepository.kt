@@ -36,7 +36,7 @@ class AlertsRepository(
                         }
 
                     AlertsSnapshot(
-                        serverTime = data.timestamp,
+                        serverTime = response.timestamp.ifBlank { data.timestamp },
                         alertOblasts = areas.filterNot { it.name.contains("район", ignoreCase = true) },
                         alertRaions = areas.filter { it.name.contains("район", ignoreCase = true) },
                         targets = data.targets.targets

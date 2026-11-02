@@ -33,8 +33,11 @@ class GeoJsonLoader(private val context: Context) {
             val feature = features.getJSONObject(i)
             val props = feature.optJSONObject("properties") ?: JSONObject()
             val key = props.optString("key", "")
-            // GeoJSON from neptun.in.ua uses "region" for the full name, not "name"
-            val name = props.optString("region", props.optString("name", key))
+            // Oblasts use "region", raions use "rayon"; fall back to "name" / key
+            val name = props.optString(
+                "region",
+                props.optString("rayon", props.optString("name", key))
+            )
             if (key.isEmpty()) continue
 
             val geometry = feature.optJSONObject("geometry") ?: continue

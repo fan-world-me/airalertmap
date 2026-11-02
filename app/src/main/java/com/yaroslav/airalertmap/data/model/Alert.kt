@@ -13,6 +13,7 @@ data class AlertArea(
 
 data class DimapPollingResponse(
     val type: String = "",
+    val timestamp: String = "",
     val data: DimapPollingData = DimapPollingData()
 )
 
